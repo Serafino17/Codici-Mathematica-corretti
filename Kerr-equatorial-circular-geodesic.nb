@@ -1,0 +1,164 @@
+<< SpinWeightedSpheroidalHarmonics`
+ << KerrGeodesics`
+<< Teukolsky`
+(* Equatorial circular geodesic around Kerr black hole*)
+M = 1;
+mp = 1;  
+a = 0.9;
+(* circular orbit imply n=k=0 *)
+
+
+
+ScalarFluxToolkit[r0_] := (
+  tot = 0;
+  
+   orbit = KerrGeoOrbit[a, r0, 0, 1];
+  Do[
+    Do[
+       mode = TeukolskyPointParticleMode[0, l, m, 0, 0, orbit];
+    	
+    (*Estrarre un valore specifico all'interno di "Energy"*)
+    energyI = mode["Fluxes"]["Energy"]["\[ScriptCapitalI]"]; 
+    energyH = mode["Fluxes"]["Energy"]["\[ScriptCapitalH]"];
+    
+    tot = tot + (energyI +   energyH);
+    
+    
+    , {m, -l, l}
+    	],
+   {l, 1, 5}
+   ];
+  
+  tot
+  )
+Log10[(1/4)*0.1*0.1*ScalarFluxToolkit[6.00000001`30]]
+(1/4)*0.3*0.3*ScalarFluxToolkit[7`30]
+
+d = 0.3;
+(*
+(*Crea i dati per il \
+grafico*)data=Table[{1/Sqrt[k],Log10[(1/8)*d*d*ScalarFluxToolkit[\
+SetPrecision[k,30]]]},{k,6+(10^-9),69.5,3}];
+			
+(*Plotta i dati*)
+ListPlot[data]
+*)
+GravFlux1[r0_] := (
+  tot = 0;
+  
+   orbit = KerrGeoOrbit[a, r0, 0, 1];
+  Do[
+    Do[
+       mode = TeukolskyPointParticleMode[-2, l, m, 0, 0, orbit];
+    	
+    (*Estrarre un valore specifico all'interno di "Energy"*)
+    energyI = mode["Fluxes"]["Energy"]["\[ScriptCapitalI]"]; 
+    energyH = mode["Fluxes"]["Energy"]["\[ScriptCapitalH]"];
+    
+    tot = tot + (energyI +   energyH);
+    (*Stampa i valori correnti di l e m*)
+    (*Print["l = ",l,", m = ",m,", energyI = ",energyI,", energyH = ",
+    energyH];*)
+    	
+    (* Print["l = ",l,", m = ",m];*)
+    	
+    , {m, -l, l}
+    	],
+   {l, 2, 5}
+   ];
+  (*Aggiunto per debugging
+  Print["Valore finale di tot: ",tot];
+  *)
+  tot
+  )
+	
+GravFlux1[6.00000001`30]
+GravFlux1[7`30] 
+
+(*Equatorial orbits (x^2=1)*)
+(*The Carter constant is zero for all equatorial orbits*)
+(*Circular (e=0)*)
+	
+KerrGeoEnergy1[a1_, p_, 0, 
+  x_ /; x^2 == 1] := ((-2 + p) Sqrt[p] + a1/x)/
+  Sqrt[2 a1/x p^(3/2) + (-3 + p) p^2]
+Energia[r_] := (r^(3/2) - 2 M r^(1/2) + a M^(1/2))/(
+  r^(3/4) (r^(3/2) - 3 M r^(1/2) + 2 a M^(1/2))^(1/2));
+Precision[a]
+KerrGeoEnergy[a, 10, 0, 1]
+Energia[10] 
+
+rIsco = KerrGeoISCO[a, 1]
+
+(* We choose to study prograde orbits *)
+Energy[r_] := KerrGeoEnergy[0.9, r, 0, 1];   (* energy per mass unit *)
+Plot[Energy[r], {r, rIsco, 65}, PlotRange -> All]
+
+(* Finally we are able to evaluate the orbital evolution of the SCO \
+with the computation of r(t) and \[CurlyPhi](t) *)
+q = 0.3;	
+		
+GravFlux1[SetPrecision[7, 30]] + (1/4)*q*q*ScalarFluxToolkit[7`30]
+
+dataflux = 
+  Table[{r1, 
+    GravFlux1[SetPrecision[r1, 30]] + (1/4)*q*q*
+      ScalarFluxToolkit[SetPrecision[r1, 30]]
+       }, {r1, KerrGeoISCO[a, 1], 65, 1}];
+ListPlot[dataflux]
+
+(*salvo tutto in un file.dat*)
+Export["correct-dataflux.dat", dataflux, "Table"]
+data = Import["correct-dataflux.dat", "Table"];
+
+(*la creazione di dataflux impiega 35 minuti circa*)
+(* Building the intepolated function *) 
+EnergyFlux = Interpolation[data]
+Plot[EnergyFlux[r], {r, KerrGeoISCO[a, 1], 65}, PlotRange -> All]
+
+(*Eorbit is the energy of a massive point-particle in geodetic motion \
+on a equatorial circular orbit*)
+
+(* We choose to study prograde orbits *)
+
+Eorbit[r_] := KerrGeoEnergy[a, r, 0, 1];   (* energy per mass unit *)
+Plot[Eorbit[r], {r, KerrGeoISCO[a, 1], 65}, PlotRange -> All]
+
+DEorbit[r_] := D[Eorbit[r], r];
+	
+Plot[Evaluate[DEorbit[r]], {r, KerrGeoISCO[a, 1], 65  M}, 
+ PlotRange -> All]
+Plot[EnergyFlux[r], {r, KerrGeoISCO[a, 1], 65}, PlotRange -> All]
+
+(*Integration of the differential equation for r(t) *)
+
+eq = r'[t] + EnergyFlux[r[t]]/DEorbit[r[t]];
+		
+T = 283417.01592765615`;
+sol = NDSolve[{eq == 0, r[0] == 62 M}, r, {t, 0, T}]
+Plot[Evaluate[r[t] /. sol], {t, 0,  T}, PlotRange -> All]
+
+(*Define a function sol_r[t]*)
+rsol[t_] := (r[t] /. sol)[[1]]
+rsol[t] /. t -> T
+KerrGeoISCO[a, 1]
+
+(* Differential equation for phi(t) for prograde orbits*)
+eq1 = \[CurlyPhi]'[t] - Sqrt[M]/((rsol[t])^(3/2) + a Sqrt[M]);
+
+sol1 = NDSolve[{eq1 == 0, \[CurlyPhi][0] == 0}, \[CurlyPhi], {t, 0, T}]
+Plot[Evaluate[\[CurlyPhi][t] /. sol1], {t, 0, T}, 
+ PlotRange -> All]     
+
+(*
+Export["dataflux.dat",dataflux,"Table"]
+data=Import["data.dat","Table"];
+ListPlot[data]
+EnergyFlux2=Interpolation[data]
+Plot[EnergyFlux2[r],{r,KerrGeoISCO[a,1],65}, PlotRange->All]*)
+	
+
+
+
+
+
