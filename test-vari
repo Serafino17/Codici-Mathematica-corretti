@@ -1,0 +1,309 @@
+(*condizioni al bordo all'infinito*)
+(*condizioni al bordo all'infinito*)
+ 
+
+\[Psi]\[Infinity][r_] := Sum[T[n] 1/r^n, {n, 0, 7}];
+\[Psi]\[Infinity][r]
+	
+pot2[r_] := (1 - 2 M1/r)* (l1 (l1 + 1) + (2 M1/r))/r^2; pot2[r]
+eqc = (1 - (2 M1)/r) D[t[r], {r, 2}] + ((2 M1)/r^2 + 2 I \[Omega]1)*
+    D[t[r], r] - pot2[r]/(1 - (2 M1)/r)  t[r] ;
+
+Normal@Series[eqc /. t -> \[Psi]\[Infinity], {r, \[Infinity], 4}]
+(*Solve[SeriesCoefficient[%,{r,\[Infinity],2}]==0,T[1]]*)
+Table[SeriesCoefficient[%, {r, \[Infinity], i}] == 0, {i, 4}]
+Solve[%, {T[1], T[2], T[3]}]
+
+
+
+(*condizioni al bordo all'EH *)
+
+\[Psi]1\[Infinity][r_] := Sum[U[n] (r - 2 M1)^n, {n, 0, 7 }];
+\[Psi]1\[Infinity][r]
+
+pot2[r_] := (1 - 2 M1/r)* (l1 (l1 + 1) + (2 M1/r))/r^2; pot2[r]
+eqb = (1 - (2 M1)/r) D[t[r], {r, 2}] + ((2 M1)/r^2 - 2 I \[Omega]1)*
+    D[t[r], r] - pot2[r]/(1 - (2 M1)/r)  t[r] ; 
+
+Normal@Series[eqb /. t -> \[Psi]1\[Infinity], {r, 2 M1, 3}];
+ Table[SeriesCoefficient[%, {r, 2 M1, i}] == 0, {i, 0, 2}]
+Solve[%, {U[1], U[2], U[3]}]
+
+
+l = 1;
+d = 0.1; 
+m = 1; 
+ 
+(*Tutti i valori di massa sono fiati a 1*)   
+M = 1;
+mp = 1; 
+rp = 10 M;
+\[Omega] = Sqrt[M/rp^3];  
+
+
+(*Zona di radiazione(rfin>>1/omega)e orizzonte eventi*)
+rfin = 5000;   
+rin = 2 M + 10^-6;
+
+
+rstar[r_] := r + 2 M Log[r/2 M - 1];
+inrs = rstar[rin];
+finrs = rstar[rfin];
+
+(*Condizioni al bordo inward, a0 = 1 *)
+a1 = ((1 + l (l + 1))/((1 - 4 M I \[Omega])*(2 M)));
+
+a2 = (I (-3 - 2 l - 2 l^2 + 6 M a1 + 2 l M  a1 + 2 l^2 M a1))/(
+  16 M^2 (I + 2 M \[Omega]));
+
+a3 = -((-6 I l - 5 I l^2 + 3 I l^3 + 4 I l^4 + 3 I l^5 + I l^6 + 
+       12 M \[Omega] - 60 l M \[Omega] - 84 l^2 M \[Omega] - 
+       48 l^3 M \[Omega] - 24 l^4 M \[Omega] - 192 I M^2 \[Omega]^2 - 
+       96 I l M^2 \[Omega]^2 - 
+       96 I l^2 M^2 \[Omega]^2 )/(96 M^3 (I + 2 M \[Omega]) (I + 
+         4 M \[Omega]) (3 I + 4 M \[Omega])));
+
+(* iny[r_]:=Exp[- I \[Omega] rstar[r]]*(1+a1 (r-2 M)+a2(r-2 M)^2+a3 \
+(r-2 M)^3); *)
+ iny[r_] := 
+  Exp[- I \[Omega] rstar[r]]*(1 + a1 (r - 2 M) + a2 (r - 2 M)^2 + 
+     a3 (r - 2 M)^3);
+a = iny[rin];
+b = D[iny[r], r] /. r -> rin ;
+
+(*Potenziale V(r)*)
+pot[r_] := (1 - 2 M/r)* (l (l + 1) + (2 M/r))/r^2; 
+
+(*Inverto la relazione rstar(r)*)
+
+rdrs[rs_] := (  
+  rstar[r_] := r + 2 M Log[r/2 M - 1];
+  NSolve[rstar[r] == rs, r][[1, 1, 2]]
+  )  
+	
+(*Potenziale V(rstar)*)
+pot1[rs_] := pot[rdrs[rs]];
+	
+eq = (1 - (2 M)/r)^2 D[y[r], {r, 2}] + (1 - (2 M)/r)*((2 M)/r^2)*
+    D[y[r], r] + (\[Omega]^2 - pot[r]) y[r] ;
+
+(*Soluzione entrante all'orizzonte*)
+
+sol1 = NDSolve[{eq == 0, y[rin] == a, y'[rin] == b}, 
+   y, {r, rin, rfin}];
+
+(*Plot della parte reale di y[r]*) 
+Plot[Evaluate[Re[y[r] /. sol1]], {r, rin, rfin},
+ PlotRange -> All, PlotLabel -> "Parte Reale della y[r]"]
+
+(*Plot della parte immaginaria di y[r]*)
+Plot[Evaluate[Im[y[r] /. sol1]], {r, rin, rfin}, PlotRange -> All, 
+ PlotLabel -> "Parte Immaginaria della y[r]"]
+	
+inz[r_] := 
+  Exp[ I \[Omega] rstar[r]]*(1 + (I l (l + 1))/(2 \[Omega] r) + 
+     1/r^2 (-((-2 l - l^2 + 2 l^3 + l^4 - 4 I M \[Omega])/(
+        8 \[Omega]^2))) + 
+     1/r^3 *(-(1/(
+         48 \[Omega]^3)) (12 I l + 4 I l^2 - 15 I l^3 - 5 I l^4 + 
+          3 I l^5 + I l^6 - 24 M \[Omega] + 36 l M \[Omega] + 
+          36 l^2 M \[Omega]) ));
+c = inz[rfin]; 
+t = D[inz[r], r] /. r -> rfin;  
+	
+eq1 = (1 - (2 M)/r)^2 D[f[r], {r, 2}] + (1 - (2 M)/r)*((2 M)/r^2)*
+    D[f[r], r] + (\[Omega]^2 - pot[r]) f[r] ;
+
+sol2 = NDSolve[{eq1 == 0, f[rfin] == c, f'[rfin] == t}, 
+   f, {r, rin, rfin}];
+	
+(*Plot della parte reale di z[r]*) 
+Plot[Evaluate[Re[f[r] /. sol2]], {r, rin, rfin},
+ PlotRange -> {{-5, 500}, {-10, 3}}, 
+ PlotLabel -> "Parte Reale della z[r]"]
+	
+(*Plot della parte reale di z[r]*) 
+Plot[Evaluate[Re[f[r] /. sol2]], {r, rin, rfin},
+ PlotRange -> All, PlotLabel -> "Parte Reale della z[r]"]
+
+
+(*Plot della parte immaginaria di z[r]*)
+Plot[Evaluate[Im[f[r] /. sol2]], {r, rin, rfin}, 
+ PlotRange -> {{0, 500}, {-3, 10}}, 
+ PlotLabel -> "Parte Immaginaria della z[r]"]
+
+(*Plot della parte immaginaria di z[r]*)
+Plot[Evaluate[Im[f[r] /. sol2]], {r, rin, rfin}, PlotRange -> All, 
+ PlotLabel -> "Parte Immaginaria della z[r]"]
+
+
+<< SpinWeightedSpheroidalHarmonics`
+ << KerrGeodesics`
+ << ReggeWheeler`
+RWin = ReggeWheelerRadial[0, 1, N[\[Omega]], 
+  Method -> {"NumericalIntegration", "Domain" -> {2 + 10^(-6), 5000}},
+   "BoundaryConditions" -> "In"]
+	
+Plot[Evaluate[Re[RWin[r]]], {r, rin, rfin}, 
+ PlotRange -> {{750, 770}, Automatic}, PlotLabel -> "Re  RWin"]
+			
+										
+RWup = ReggeWheelerRadial[0, 1, N[\[Omega]], 
+  Method -> {"NumericalIntegration", "Domain" -> {2 + 10^(-6), 5000}},
+   "BoundaryConditions" -> "Up"]
+	
+(*calcolo del wronskiano*)
+
+W1[r_] := (1 - 2 M/r) ( D[RWup[r], r]*RWin[r] - D[RWin[r], r]*RWup[r]);
+(*il wronskiano è costante*)
+
+W1[r] /. r -> 
+  10  (* come valore costante scelgo r=10M e il valore stampato è \
+corretto come si vede dai grafici *)
+W1[r] /. r -> 2 M + 10^-4 
+	
+(*Plot della parte reale di W[r]*)
+
+Plot[Evaluate[Re[W1[r]]], {r, rin, rfin}, PlotRange -> Automatic, 
+ PlotLabel -> "Parte Reale di W"] 
+
+(*Plot della parte Immaginaria di W[r]*)
+
+Plot[Evaluate[Im[W1[r]]], {r, rin, rfin}, PlotRange -> Automatic, 
+ PlotLabel -> "Parte Immaginaria di W"] 
+
+
+(*calcolo del wronskiano*)
+	
+y1[r_] := {y[r] /. sol1};
+z1[r_] := {f[r] /. sol2};
+				
+	
+W[r_] := (1 - 2 M/r) ( D[z1[r], r] y1[r] - D[y1[r], r] z1[r]);
+(*il wronskiano è costante*)
+
+W[r] /. r -> 
+  10  (* come valore costante scelgo r=10M e il valore stampato è \
+corretto come si vede dai grafici *)
+W[r] /. r -> 2 M + (1*10^-4)
+
+(*Plot della parte reale di W[r]*)
+
+Plot[Evaluate[Re[W[r]]], {r, rin, rfin}, PlotRange -> Automatic, 
+ PlotLabel -> "Parte Reale di W"] 
+
+(*Plot della parte Immaginaria di W[r]*)
+
+Plot[Evaluate[Im[W[r]]], {r, rin, rfin}, PlotRange -> Automatic, 
+ PlotLabel -> "Parte Immaginaria di W"] 
+
+
+J[r_] := - d mp ((4 \[Pi])/r^(3/2)) (Sqrt[r - 3 M])*
+   LegendreP[l, m, 0] ;
+N[J[rp]];
+N[d];
+rp;
+mp;
+LegendreP[l, m, \[Pi]/2];
+"inrs è:" N[inrs]
+"finrs è:" N[finrs]
+
+A = ( z1[r] J[r] 1/W[r])  /. r -> rp; 
+Aquadro = (Abs[A])^2;
+"modulo quadro della perturbazione entrante"
+	N[Aquadro] [[1]]
+
+B = ( y1[r] J[r] 1/W[r]) /. r -> rp ;
+	
+Bquadro = (Abs[B])^2;
+"modulo quadro della perturbazione uscente"  
+N[Bquadro][[1]]
+
+Atk = ( RWup[r] J[r] 1/W1[r])  /. r -> rp; 
+Atkquadro = (Abs[Atk])^2;
+"modulo quadro della perturbazione entrante con omogenea del toolkit"
+	N[Atkquadro] 
+
+Btk = ( RWin[r] J[r] 1/W1[r]) /. r -> rp ;
+Btkquadro = (Abs[Btk])^2;
+"modulo quadro della perturbazione uscente con omogenea del toolkit"  \
+
+N[Btkquadro]
+
+"Scarto relativo tra i moduli quadri delle perturbazione entrante con \
+valore di riferimento del toolkit"
+(Atkquadro - Aquadro)/Atkquadro
+	
+"Scarto relativo tra i moduli quadri delle perturbazione uscente con \
+valore di riferimento del toolkit"
+(Btkquadro - Bquadro)/Btkquadro
+
+
+(* Plot degli scarti relativi tra le soluzioni omogenee*)
+
+Plot[Evaluate[Re[RWin[r]]], {r, rin, rfin}, PlotRange -> All, 
+ PlotLabel -> "Re  RWin"]
+
+Plot[Evaluate[Re[y1[r]]], {r, rin, rfin}, PlotRange -> All, 
+ PlotLabel -> "Re  y1 "]
+
+Plot[Evaluate[Re[RWin[r]]], {r, rin, rfin}, 
+ PlotRange -> {{750, 770}, Automatic}, PlotLabel -> "Re  RWin"]
+
+Plot[Evaluate[Re[y1[r]]], {r, rin, rfin}, 
+ PlotRange -> {{750, 770}, Automatic}, PlotLabel -> "Re  y1"]
+	
+Plot[Evaluate[Re[(RWin[r] - y1[r])/RWin[r]]], {r, rin, rfin}, 
+ PlotRange -> {{750, 770}, Automatic}, 
+ PlotLabel -> "Re confronto in"]
+Plot[Evaluate[Re[(RWin[r] - y1[r])/RWin[r]]], {r, rin, rfin}, 
+ PlotRange -> {{750, 770}, {-0.17, 0}}, PlotLabel -> "Re confronto in"]
+
+
+(*	
+Plot[Evaluate[Im[RWup[r]]],{r,rin,rfin},PlotRange->All,PlotLabel->"Im \
+up"]
+
+Plot[Evaluate[Re[RWup[r]]],{r,rin,rfin},PlotRange->All,PlotLabel->"Im \
+ in"] *)
+
+
+Plot[Evaluate[Re[(RWup[r] - z1[r])/RWup[r]]], {r, rin, rfin}, 
+ PlotRange -> All, PlotLabel -> "Re confronto up"]
+
+Plot[Evaluate[Im[(RWup[r] - z1[r])/RWup[r]]], {r, rin, rfin}, 
+ PlotRange -> All, PlotLabel -> "Im confronto up"]
+
+
+
+Plot[Evaluate[Re[(RWin[r] - y1[r])/RWin[r]]], {r, rin, rfin}, 
+ PlotRange -> All, PlotLabel -> "Re confronto in"]
+
+Plot[Evaluate[Im[(RWin[r] - y1[r])/RWin[r]]], {r, rin, rfin}, 
+ PlotRange -> All, PlotLabel -> "Im confronto in"]
+(*
+Plot[Evaluate[Re[RW[r]]],{r,rin,rfin},PlotRange->{{750,765},{-1,1}},\
+PlotLabel->"Re  in"]
+
+Plot[Evaluate[Re[y1[r]]],{r,rin,rfin},PlotRange->{{750,765},{-1,1}},\
+PlotLabel->"Re  in"]   *)
+	
+
+"deltaquadro di phi(-): primo con 1000 e 2M+10^-4, il secondo con 500 \
+e 2M+2*10^-4"
+e1 = 0.0000884817994959202`;
+e2 = 0.00008848177479724194`;
+"Scarto relativo"
+(e1 - e2)/e1 
+
+"deltaquadro di phi(+): primo con 1000 e 2M+10^-4, il secondo con 500 \
+e 2M+2*10^-4"
+v1 = 0.011870182824682888`;
+v2 = 0.01187017664839439`;
+
+"Scarto relativo"
+(v1 - v2)/v1
+
+
+
+
